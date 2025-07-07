@@ -1,0 +1,103 @@
+#!/bin/bash
+
+ARGS=()
+for arg in "$@"; do
+  if [[ "$arg" == --*=* ]]; then
+    key="${arg%%=*}"
+    value="${arg#*=}"
+    ARGS+=("$key" "$value")
+  else
+    ARGS+=("$arg")
+  fi
+done
+set -- "${ARGS[@]}"
+
+KIND=""
+KIND_CATEGORY=""
+OTHER_OPTIONS=()
+BREAKING=""
+
+parse_kind_arg() {
+  local kind="$1"
+  KIND="$kind"
+
+  if [[ $# -gt 1 && ! "$2" =~ ^- ]]; then
+    KIND_CATEGORY="$2"
+    return 2
+  fi
+
+  return 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --fix)
+      parse_kind_arg "fix" "$2"
+      shift $?
+      ;;
+    --feat)
+      parse_kind_arg "feat" "$2"
+      shift $?
+      ;;
+    --chore)
+      parse_kind_arg "chore" "$2"
+      shift $?
+      ;;
+    --build)
+      parse_kind_arg "build" "$2"
+      shift $?
+      ;;
+    --ci)
+      parse_kind_arg "ci" "$2"
+      shift $?
+      ;;
+    --docs)
+      parse_kind_arg "docs" "$2"
+      shift $?
+      ;;
+    --style)
+      parse_kind_arg "style" "$2"
+      shift $?
+      ;;
+    --refactor|--refac)
+      parse_kind_arg "refactor" "$2"
+      shift $?
+      ;;
+    --perf)
+      parse_kind_arg "perf" "$2"
+      shift $?
+      ;;
+    --test|--spec)
+      parse_kind_arg "test" "$2"
+      shift $?
+      ;;
+    --breaking)
+      shift
+      if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+        BREAKING="$1"
+        shift
+      else
+        BREAKING="true"
+      fi
+      ;;
+    *)
+      OTHER_OPTIONS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+cmdline=(git commit "${OTHER_OPTIONS[@]}")
+if [[ -n "$KIND" ]]; then
+  cmdline+=("--trailer" "Type: $KIND")
+fi
+
+if [[ -n "$KIND" && -n "$KIND_CATEGORY" ]]; then
+  cmdline+=("--trailer" "Scope: $KIND_CATEGORY")
+fi
+
+if [[ -n "$BREAKING" ]]; then
+  cmdline+=("--trailer" "Breaking: $BREAKING")
+fi
+
+exec "${cmdline[@]}"
